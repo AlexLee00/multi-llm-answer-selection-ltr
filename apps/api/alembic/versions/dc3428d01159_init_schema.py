@@ -1,8 +1,8 @@
-"""create core tables
+"""init schema
 
-Revision ID: 6425c7748f43
+Revision ID: dc3428d01159
 Revises: 
-Create Date: 2026-02-15 13:55:47.226421
+Create Date: 2026-02-15 18:19:42.729099
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '6425c7748f43'
+revision: str = 'dc3428d01159'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -28,21 +28,21 @@ def upgrade() -> None:
     sa.Column('goal', sa.Enum('concept', 'practice', 'assignment', 'interview', 'other', name='goal_enum'), nullable=False),
     sa.Column('stack', sa.String(length=200), nullable=True),
     sa.Column('constraints', sa.Text(), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('context_id')
     )
     op.create_table('snapshots',
     sa.Column('snapshot_id', sa.UUID(), nullable=False),
     sa.Column('data_range_json', sa.JSON(), nullable=False),
     sa.Column('row_count', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('snapshot_id')
     )
     op.create_table('users_anon',
     sa.Column('user_id', sa.UUID(), nullable=False),
     sa.Column('role', sa.Enum('planner', 'designer', 'dev', 'tester', 'other', name='role_enum'), nullable=False),
     sa.Column('level', sa.Enum('beginner', 'intermediate', 'advanced', name='level_enum'), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.PrimaryKeyConstraint('user_id')
     )
     op.create_table('models',
@@ -51,7 +51,7 @@ def upgrade() -> None:
     sa.Column('feature_version', sa.String(length=20), nullable=False),
     sa.Column('metrics_json', sa.JSON(), nullable=False),
     sa.Column('artifact_path', sa.String(length=255), nullable=False),
-    sa.Column('trained_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('trained_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['snapshot_id'], ['snapshots.snapshot_id'], ),
     sa.PrimaryKeyConstraint('model_version')
     )
@@ -62,7 +62,7 @@ def upgrade() -> None:
     sa.Column('question_type', sa.Enum('controlled', 'free', name='question_type_enum'), nullable=False),
     sa.Column('domain', sa.String(length=50), nullable=False),
     sa.Column('question_text_hash', sa.String(length=64), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['context_id'], ['contexts.context_id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users_anon.user_id'], ),
     sa.PrimaryKeyConstraint('question_id')
@@ -84,7 +84,7 @@ def upgrade() -> None:
     sa.Column('step_score', sa.Integer(), nullable=False),
     sa.Column('has_bullets', sa.Boolean(), nullable=False),
     sa.Column('has_warning', sa.Boolean(), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['question_id'], ['questions.question_id'], ),
     sa.PrimaryKeyConstraint('candidate_id')
     )
@@ -95,7 +95,8 @@ def upgrade() -> None:
     sa.Column('candidate_b_id', sa.UUID(), nullable=False),
     sa.Column('user_choice', sa.Enum('a', 'b', 'tie', 'bad', name='pairwise_choice_enum'), nullable=False),
     sa.Column('reason_tags', postgresql.ARRAY(sa.String(length=30)), nullable=True),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('note', sa.Text(), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['candidate_a_id'], ['candidates.candidate_id'], ),
     sa.ForeignKeyConstraint(['candidate_b_id'], ['candidates.candidate_id'], ),
     sa.ForeignKeyConstraint(['question_id'], ['questions.question_id'], ),
@@ -110,7 +111,7 @@ def upgrade() -> None:
     sa.Column('served_policy', sa.Enum('single_llm_openai', 'single_llm_gemini', 'rule', 'ltr', name='served_policy_enum'), nullable=False),
     sa.Column('model_version', sa.String(length=40), nullable=True),
     sa.Column('feature_version', sa.String(length=20), nullable=False),
-    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.ForeignKeyConstraint(['ltr_choice_candidate_id'], ['candidates.candidate_id'], ),
     sa.ForeignKeyConstraint(['question_id'], ['questions.question_id'], ),
     sa.ForeignKeyConstraint(['rule_choice_candidate_id'], ['candidates.candidate_id'], ),

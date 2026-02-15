@@ -2,12 +2,20 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+
 from sqlalchemy import (
-    String, Integer, Boolean, DateTime, ForeignKey, Text,
-    JSON, Enum
+    String,
+    Integer,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Text,
+    JSON,
+    Enum,
 )
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.sql import func
 
 
 class Base(DeclarativeBase):
@@ -26,6 +34,12 @@ def _uuid() -> uuid.UUID:
     return uuid.uuid4()
 
 
+def _now():
+    # DB 서버 시간이 single source of truth가 되도록 server_default(func.now())를 사용한다.
+    # 이 함수는 혹시라도 python-side default가 필요해질 때를 대비한 placeholder.
+    return datetime.utcnow()
+
+
 class UserAnon(Base):
     __tablename__ = "users_anon"
 
@@ -33,7 +47,11 @@ class UserAnon(Base):
     role: Mapped[str] = mapped_column(ROLE_ENUM, nullable=False)
     level: Mapped[str] = mapped_column(LEVEL_ENUM, nullable=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
 
 
 class Context(Base):
@@ -47,7 +65,11 @@ class Context(Base):
     stack: Mapped[str | None] = mapped_column(String(200), nullable=True)
     constraints: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
 
 
 class Question(Base):
@@ -63,7 +85,11 @@ class Question(Base):
 
     question_text_hash: Mapped[str] = mapped_column(String(64), nullable=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
 
 
 class Candidate(Base):
@@ -89,11 +115,15 @@ class Candidate(Base):
     # extracted features (v1)
     len_words: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     has_code: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    step_score: Mapped[float] = mapped_column(Integer, nullable=False, default=0)  # keep int for v1 simplicity
+    step_score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)  # v1 simplicity
     has_bullets: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     has_warning: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
 
 
 class Selection(Base):
@@ -102,16 +132,26 @@ class Selection(Base):
     selection_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=_uuid)
     question_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("questions.question_id"), nullable=False)
 
-    rule_choice_candidate_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("candidates.candidate_id"), nullable=True)
-    ltr_choice_candidate_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("candidates.candidate_id"), nullable=True)
-    served_choice_candidate_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("candidates.candidate_id"), nullable=False)
+    rule_choice_candidate_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("candidates.candidate_id"), nullable=True
+    )
+    ltr_choice_candidate_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("candidates.candidate_id"), nullable=True
+    )
+    served_choice_candidate_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("candidates.candidate_id"), nullable=False
+    )
 
     served_policy: Mapped[str] = mapped_column(POLICY_ENUM, nullable=False)
 
     model_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
     feature_version: Mapped[str] = mapped_column(String(20), nullable=False, default="fv1")
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
 
 
 class FeedbackPairwise(Base):
@@ -125,8 +165,13 @@ class FeedbackPairwise(Base):
 
     user_choice: Mapped[str] = mapped_column(CHOICE_ENUM, nullable=False)
     reason_tags: Mapped[list[str] | None] = mapped_column(ARRAY(String(30)), nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
 
 
 class Snapshot(Base):
@@ -136,7 +181,11 @@ class Snapshot(Base):
     data_range_json: Mapped[dict] = mapped_column(JSON, nullable=False)
     row_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
 
 
 class ModelRegistry(Base):
@@ -150,4 +199,8 @@ class ModelRegistry(Base):
     metrics_json: Mapped[dict] = mapped_column(JSON, nullable=False)
     artifact_path: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    trained_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
+    trained_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        nullable=False,
+    )
