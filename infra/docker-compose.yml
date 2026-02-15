@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: mlas_postgres
+    environment:
+      POSTGRES_DB: mlas
+      POSTGRES_USER: mlas
+      POSTGRES_PASSWORD: mlas_pw
+    ports:
+      - "5432:5432"
+    volumes:
+      - mlas_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mlas -d mlas"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  mlas_pgdata:
