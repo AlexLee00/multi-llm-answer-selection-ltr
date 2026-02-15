@@ -1,5 +1,12 @@
 # multi-llm-answer-selection-ltr
 
+![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-API-green.svg)
+![Postgres](https://img.shields.io/badge/PostgreSQL-16-blue)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Research](https://img.shields.io/badge/Research-LTR-orange.svg)
+
+
 Research platform for **multi-LLM answer selection** using **Learning-to-Rank (LTR)**.
 
 The system generates candidate answers from multiple LLM providers (initially: ChatGPT API + Gemini API),  
