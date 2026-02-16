@@ -6,99 +6,105 @@
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![Research](https://img.shields.io/badge/Research-LTR-orange.svg)
 
+Research platform for **Multi-LLM Answer Selection** using **Learning-to-Rank (LTR)**.
 
-Research platform for **multi-LLM answer selection** using **Learning-to-Rank (LTR)**.
-
-The system generates candidate answers from multiple LLM providers (initially: ChatGPT API + Gemini API),  
-collects **pairwise human feedback**, and trains a **ranker** to recommend the best response for IT learners.
-
-> **Target users:** University students across roles (planner / designer / developer / tester), not necessarily developers.  
-> **Goal:** Performance-driven selection quality improvement for KCI-level evaluation.
+The system generates candidate answers from multiple LLM providers,
+collects structured **pairwise human feedback**,
+and trains a **ranker model** to improve answer selection quality for IT learners.
 
 ---
 
-## Key Idea
+# 🎯 Research Objective
 
-1. **Generate** candidate answers from N LLM providers  
-2. **Extract** lightweight features  
-   - v1: structural / format features  
-   - v2: semantic matching features  
-3. **Select** best answer using rule baseline → LTR model  
-4. **Collect** pairwise feedback (A/B/tie/bad + reason tags)  
-5. **Train** batch pipeline (later: incremental updates)
+**Target Users**
 
----
+* University students
+* Roles: planner / designer / developer / tester
+* Not necessarily professional developers
 
-## Project Status
+**Research Goal**
 
-- [x] Requirements / Concept lock (analysis completed)
-- [x] DB schema + Alembic migrations (Postgres)
-- [x] Docker Postgres (local)
-- [ ] API service (FastAPI) `/ask` + `/feedback`
-- [ ] Candidate generation adapters (OpenAI, Gemini)
-- [ ] Feature extraction v1
-- [ ] Rule baseline selector
-- [ ] Ranker training (batch) + model registry
-- [ ] Reports (rank accuracy, NDCG@1, improvements)
+* Improve answer selection quality via LTR
+* Measure performance improvement over rule-based baseline
+* Produce KCI-level empirical evaluation
 
 ---
 
-## Architecture (High-Level)
+# 🔥 Core Idea
 
-```
+1. Generate candidate answers from multiple LLM providers
+2. Extract lightweight features (v1 → v2 expansion)
+3. Select best answer via:
+
+   * Rule baseline
+   * LTR model
+4. Collect structured pairwise feedback
+5. Train batch ranking pipeline
+6. Deploy latest model automatically for serving
+
+---
+
+# 🏗 Architecture (High-Level)
 
 Client
-→ API (/ask)
-→ Generator Layer (N providers)
+→ API `/ask`
+→ Candidate Generation (N providers)
+→ Feature Extraction
 → Selector Layer (Rule / LTR)
-→ Storage (Postgres + JSONL archive)
+→ Selection 저장
 
-→ API (/feedback)
-→ Pairwise labels stored
+Client
+→ API `/feedback`
+→ Pairwise label 저장
 
-Training Pipeline (batch)
-→ snapshot
-→ feature build
-→ train
-→ evaluate
-→ release
-
-```
+Batch Training Pipeline
+→ Snapshot
+→ Trainset Export
+→ Model Train
+→ Model Register
+→ LTR Serving
 
 ---
 
-## Repo Structure
+# 📂 Repository Structure
 
 ```
-
-docs/design/        # SE design artifacts (analysis/design phase)
-infra/              # Local infrastructure (Docker Compose)
+docs/design/        # SE design artifacts
+infra/              # Docker Compose (Postgres)
 apps/api/           # FastAPI service + Alembic + src
-
-````
+artifacts/          # trainsets + trained models
+```
 
 ---
 
-## Quick Start (Local)
+# 🚀 Quick Start (Local)
 
-### 1) Start Postgres
+## 1️⃣ Start Postgres
 
 ```bash
 docker compose -f infra/docker-compose.yml up -d
 docker compose -f infra/docker-compose.yml ps
-````
+```
 
-### 2) Verify DB Tables
+---
+
+## 2️⃣ DB Migration
+
+```bash
+alembic upgrade head
+```
+
+Verify tables:
 
 ```bash
 docker exec -it mlas_postgres psql -U mlas -d mlas -c "\dt"
 ```
 
-Expected tables:
+Expected:
 
 * users_anon
-* questions
 * contexts
+* questions
 * candidates
 * selections
 * feedback_pairwise
@@ -108,71 +114,254 @@ Expected tables:
 
 ---
 
-## Design Docs
+## 3️⃣ Run API
 
-* `docs/design/architecture.md`
-* `docs/design/data-schema.md`
-* `docs/design/api-contract.md`
-* `docs/design/pipeline.md`
-* `docs/design/threat-privacy.md`
-* `docs/design/controlled-questions.md`
-* `docs/design/rtm.md`
+```bash
+uvicorn src.app.main:app --reload
+```
+
+Swagger:
+
+```
+http://localhost:8000/docs
+```
 
 ---
 
-## Research Setup (Pilot)
+# 🔁 End-to-End Flow
 
-* Participants: 30
-* Per participant: ~10 questions
-* Question mix: controlled + free
-* Controlled difficulty mix:
+## Step 1 — Ask
 
-  * Beginner: 2
-  * Intermediate: 2
-  * Advanced: 1
+Set environment:
 
-**Evaluation Metrics**
+```
+SERVED_POLICY=rule
+# or
+SERVED_POLICY=ltr
+```
+
+Call `/ask`
+
+Response includes:
+
+* question_id
+* candidate_a_id
+* candidate_b_id
+* served_choice_candidate_id
+
+---
+
+## Step 2 — Feedback
+
+Call `/feedback`:
+
+```json
+{
+  "question_id": "...",
+  "candidate_a_id": "...",
+  "candidate_b_id": "...",
+  "user_choice": "a",
+  "reason_tags": ["clarity"],
+  "note": "A가 더 단계적으로 설명함"
+}
+```
+
+Stored in:
+
+* feedback_pairwise
+* v_pairwise_train (view)
+
+---
+
+# 🧠 ML Pipeline
+
+## 1️⃣ Snapshot
+
+```bash
+python scripts/make_snapshot.py
+```
+
+Stores:
+
+* snapshot_id
+* row_count
+* data_range_json
+
+---
+
+## 2️⃣ Export Trainset
+
+```bash
+python scripts/export_trainset.py
+```
+
+Outputs:
+
+```
+artifacts/trainsets/<snapshot_id>.csv
+artifacts/trainsets/<snapshot_id>.jsonl
+```
+
+---
+
+## 3️⃣ Train Model
+
+```bash
+python scripts/train_baseline.py
+```
+
+* Logistic Regression
+* Dummy fallback if single class
+* Stores:
+
+  * .pkl
+  * metadata .json
+
+---
+
+## 4️⃣ Register Model
+
+```bash
+python scripts/register_model.py
+```
+
+Stored in `models` table:
+
+* model_version
+* snapshot_id
+* feature_version
+* metrics_json
+* artifact_path
+* trained_at
+
+---
+
+# 🏁 LTR Serving Logic
+
+At runtime:
+
+1. Load ACTIVE_MODEL_VERSION (if set)
+2. Otherwise select latest trained model
+3. Cache model in memory
+4. Perform pairwise tournament scoring
+5. Select highest average win probability
+
+Selection row records:
+
+* rule_choice_candidate_id
+* ltr_choice_candidate_id
+* served_choice_candidate_id
+* served_policy
+* model_version
+
+---
+
+# 📊 Feature Design
+
+## v1 (Implemented)
+
+* len_words
+* has_code
+* step_score
+* has_bullets
+* has_warning
+
+Training input:
+
+```
+diff = A_features - B_features
+```
+
+---
+
+## v2 (Planned)
+
+* semantic similarity (question ↔ answer)
+* embedding cosine distance
+* hallucination risk indicators
+* structural completeness score
+
+---
+
+# 🧪 Research Setup (Pilot)
+
+Participants: 30
+Per participant: ~10 questions
+
+Controlled mix:
+
+* Beginner ×2
+* Intermediate ×2
+* Advanced ×1
+* Free-form questions
+
+---
+
+# 📈 Evaluation Metrics
 
 * Rank Accuracy
 * NDCG@1
-* Improvement over baselines
+* Improvement over Rule baseline
+* Agreement with human preference
 
 ---
 
-## License
+# ⚙ Environment Configuration
+
+`.env`
+
+```
+DB_URL=postgresql+psycopg2://mlas:mlas_pw@localhost:5432/mlas
+SERVED_POLICY=ltr
+ACTIVE_MODEL_VERSION=
+```
+
+* SERVED_POLICY: rule | ltr
+* ACTIVE_MODEL_VERSION: pin specific model (optional)
+
+---
+
+# ✅ Current Prototype Status
+
+✔ DB schema complete
+✔ Pairwise feedback pipeline working
+✔ Snapshot/export/train/register pipeline working
+✔ Model registry functional
+✔ LTR serving integrated
+✔ Rule vs LTR comparison possible
+
+---
+
+# 🔜 Next Phase
+
+1. Feature v2 expansion
+2. Controlled experiment execution
+3. Statistical significance testing
+4. Incremental retraining strategy
+5. Research paper structuring
+
+---
+
+# 📄 Design Documentation
+
+Located in:
+
+```
+docs/design/
+```
+
+Includes:
+
+* architecture.md
+* data-schema.md
+* api-contract.md
+* pipeline.md
+* threat-privacy.md
+* controlled-questions.md
+* rtm.md
+
+---
+
+# 📜 License
 
 MIT
-
-```
-
----
-
-## 🔥 수정 포인트 요약
-
-✔ 코드블록 닫힘 오류 수정  
-✔ Architecture 구조를 트리 형식으로 가독성 향상  
-✔ Repo Structure 코드블록 처리  
-✔ Research Setup 계층화  
-✔ Evaluation Metrics 강조  
-✔ GitHub에서 예쁘게 보이도록 간격 조정  
-
----
-
-이제 이 상태로 커밋하면 문서 완성도 상당히 높다.
-
----
-
-**Q1**
-
-README에 “실험 프로토콜 상세(통제 질문 예시)”를 바로 넣을까, 아니면 design 폴더로 분리할까?  
-
-  
-**Q2**
-
-Architecture 다이어그램을 ASCII 대신 이미지로 넣을까?  
-
-  
-**Q3**
-
-GitHub 상단에 배지(Badge: Python, FastAPI, Postgres, MIT)도 추가할까?
-```
