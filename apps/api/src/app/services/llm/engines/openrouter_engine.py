@@ -1,4 +1,4 @@
-# apps/api/src/app/services/llm/engines/gemini_engine.py
+# apps/api/src/app/services/llm/engines/openrouter_engine.py
 from __future__ import annotations
 
 import os
@@ -8,47 +8,45 @@ from typing import Any, Dict, Optional
 from src.app.services.llm.base import LLMEngine
 from src.app.services.llm.types import EngineRequest, EngineResult
 
+_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
-class GeminiEngine(LLMEngine):
+
+class OpenRouterEngine(LLMEngine):
     """
-    Real Gemini engine.
-    - google.generativeai (legacy) SDK 우선 사용
-    - Server must boot even if package is not installed.
-    - If GEMINI_API_KEY missing -> returns EngineResult.error (no exception)
-    - system_prompt → prepended to user_prompt (Gemini does not support system role)
+    OpenRouter engine — OpenAI-compatible API.
+    - 무료 모델(예: deepseek/deepseek-chat-v3-0324:free) 사용 가능
+    - openai SDK를 재사용하고 base_url만 OpenRouter로 변경
+    - OPENROUTER_API_KEY 환경변수가 없으면 error 반환 (서버는 정상 기동)
     """
 
     def provider_name(self) -> str:
-        return "gemini"
+        return "openrouter"
 
     def generate(self, request: EngineRequest) -> EngineResult:
         t0 = time.time()
 
-        api_key = os.getenv("GEMINI_API_KEY", "").strip()
+        api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
         if not api_key:
             return EngineResult(
                 provider=self.provider_name(),
                 model=request.model,
                 answer_summary="",
                 latency_ms=int((time.time() - t0) * 1000),
-                error="missing_env:GEMINI_API_KEY",
+                error="missing_env:OPENROUTER_API_KEY",
             )
 
-        # --- lazy import: google.generativeai (설치된 패키지) ---
+        # openai SDK를 이용해 OpenRouter endpoint 호출
         try:
-            import google.generativeai as genai  # type: ignore
-            genai.configure(api_key=api_key)
-            _use_legacy = True
+            from openai import OpenAI  # type: ignore
         except Exception as e:
             return EngineResult(
                 provider=self.provider_name(),
                 model=request.model,
                 answer_summary="",
                 latency_ms=int((time.time() - t0) * 1000),
-                error=f"gemini_import_error:{repr(e)}",
+                error=f"openrouter_import_error:{repr(e)}",
             )
 
-        # params
         params: Dict[str, Any] = request.params_json or {}
         temperature = float(params.get("temperature", 0.2))
         max_tokens = int(params.get("max_tokens", 512))
@@ -56,30 +54,36 @@ class GeminiEngine(LLMEngine):
         system_prompt = str(params.get("_system_prompt", ""))
         user_prompt = str(params.get("_user_prompt", ""))
 
-        # Gemini는 system role을 직접 지원하지 않으므로 prepend
-        full_prompt = f"{system_prompt}\n\n{user_prompt}".strip() if system_prompt else user_prompt
-
         try:
-            model = genai.GenerativeModel(
-                model_name=request.model,
-                generation_config={
-                    "temperature": temperature,
-                    "max_output_tokens": max_tokens,
+            client = OpenAI(
+                api_key=api_key,
+                base_url=_OPENROUTER_BASE_URL,
+            )
+
+            resp = client.chat.completions.create(
+                model=request.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                temperature=temperature,
+                max_tokens=max_tokens,
+                extra_headers={
+                    # OpenRouter 권장 헤더 (optional)
+                    "HTTP-Referer": "https://github.com/multi-llm-answer-selection-ltr",
+                    "X-Title": "Multi-LLM Answer Selection",
                 },
             )
-            resp = model.generate_content(full_prompt)
 
-            text = resp.text or ""
+            text = resp.choices[0].message.content or ""
             latency_ms = int((time.time() - t0) * 1000)
 
-            # token fields (best-effort)
             tokens_in: Optional[int] = None
             tokens_out: Optional[int] = None
             try:
-                meta = resp.usage_metadata
-                if meta:
-                    tokens_in = int(getattr(meta, "prompt_token_count", 0) or 0)
-                    tokens_out = int(getattr(meta, "candidates_token_count", 0) or 0)
+                if resp.usage:
+                    tokens_in = int(getattr(resp.usage, "prompt_tokens", 0) or 0)
+                    tokens_out = int(getattr(resp.usage, "completion_tokens", 0) or 0)
             except Exception:
                 pass
 
@@ -99,5 +103,5 @@ class GeminiEngine(LLMEngine):
                 model=request.model,
                 answer_summary="",
                 latency_ms=int((time.time() - t0) * 1000),
-                error=f"gemini_call_error:{repr(e)}",
+                error=f"openrouter_call_error:{repr(e)}",
             )
