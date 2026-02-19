@@ -11,8 +11,9 @@ from src.app.services.llm.types import EngineRequest, EngineResult
 
 class GeminiEngine(LLMEngine):
     """
-    Real Gemini engine (google-genai SDK).
-    - Server must boot even if 'google-genai' is not installed.
+    Real Gemini engine.
+    - google.generativeai (legacy) SDK 우선 사용
+    - Server must boot even if package is not installed.
     - If GEMINI_API_KEY missing -> returns EngineResult.error (no exception)
     - system_prompt → prepended to user_prompt (Gemini does not support system role)
     """
@@ -33,10 +34,11 @@ class GeminiEngine(LLMEngine):
                 error="missing_env:GEMINI_API_KEY",
             )
 
-        # --- lazy import (prevents ModuleNotFoundError on server boot) ---
+        # --- lazy import: google.generativeai (설치된 패키지) ---
         try:
-            from google import genai  # type: ignore
-            from google.genai import types as genai_types  # type: ignore
+            import google.generativeai as genai  # type: ignore
+            genai.configure(api_key=api_key)
+            _use_legacy = True
         except Exception as e:
             return EngineResult(
                 provider=self.provider_name(),
@@ -54,23 +56,18 @@ class GeminiEngine(LLMEngine):
         system_prompt = str(params.get("_system_prompt", ""))
         user_prompt = str(params.get("_user_prompt", ""))
 
-        # Gemini는 system role을 직접 지원하지 않으므로
-        # system_prompt를 user_prompt 앞에 prepend 한다.
+        # Gemini는 system role을 직접 지원하지 않으므로 prepend
         full_prompt = f"{system_prompt}\n\n{user_prompt}".strip() if system_prompt else user_prompt
 
         try:
-            client = genai.Client(api_key=api_key)
-
-            config = genai_types.GenerateContentConfig(
-                temperature=temperature,
-                max_output_tokens=max_tokens,
+            model = genai.GenerativeModel(
+                model_name=request.model,
+                generation_config={
+                    "temperature": temperature,
+                    "max_output_tokens": max_tokens,
+                },
             )
-
-            resp = client.models.generate_content(
-                model=request.model,
-                contents=full_prompt,
-                config=config,
-            )
+            resp = model.generate_content(full_prompt)
 
             text = resp.text or ""
             latency_ms = int((time.time() - t0) * 1000)

@@ -35,6 +35,12 @@ class EngineRegistry:
 _DEFAULT_REGISTRY: Optional[EngineRegistry] = None
 
 
+def reset_registry() -> None:
+    """서버 재시작 없이 registry를 초기화할 때 사용 (테스트/핫리로드용)."""
+    global _DEFAULT_REGISTRY
+    _DEFAULT_REGISTRY = None
+
+
 def build_default_registry() -> EngineRegistry:
     global _DEFAULT_REGISTRY
     if _DEFAULT_REGISTRY is not None:
@@ -43,16 +49,17 @@ def build_default_registry() -> EngineRegistry:
     reg = EngineRegistry()
 
     # --- OpenAI ---
-    # dummy를 먼저 등록한 뒤, 실제 엔진으로 덮어쓴다.
+    # USE_DUMMY_OPENAI=1 이면 dummy 유지, 아니면 실제 OpenAIEngine 사용
     reg.register(DummyOpenAIEngine())
-    if OpenAIEngine is not None:
+    use_dummy_openai = os.getenv("USE_DUMMY_OPENAI", "0").strip() == "1"
+    if not use_dummy_openai and OpenAIEngine is not None:
         reg.register(OpenAIEngine())  # provider_name="openai" 로 덮어씀
 
     # --- Gemini ---
     # USE_DUMMY_GEMINI=1 이면 dummy 유지, 아니면 실제 GeminiEngine으로 덮어쓴다.
     reg.register(DummyGeminiEngine())
-    use_dummy = os.getenv("USE_DUMMY_GEMINI", "0").strip() == "1"
-    if not use_dummy and GeminiEngine is not None:
+    use_dummy_gemini = os.getenv("USE_DUMMY_GEMINI", "0").strip() == "1"
+    if not use_dummy_gemini and GeminiEngine is not None:
         reg.register(GeminiEngine())  # provider_name="gemini" 로 덮어씀
 
     _DEFAULT_REGISTRY = reg
