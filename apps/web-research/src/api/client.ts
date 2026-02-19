@@ -33,6 +33,11 @@ export interface AskResponse {
   candidate_a_id: string;
   candidate_b_id: string;
   served_choice_candidate_id: string;
+  // Full answer texts for comparison view
+  candidate_a_answer?: string;
+  candidate_b_answer?: string;
+  candidate_a_provider?: string;
+  candidate_b_provider?: string;
 }
 
 export interface FeedbackParams {

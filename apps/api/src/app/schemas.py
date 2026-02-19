@@ -94,6 +94,24 @@ class AskResponse(BaseModel):
         description="Which candidate was served to user (optional).",
     )
 
+    # Full answer texts for research UI comparison view
+    candidate_a_answer: Optional[str] = Field(
+        default=None,
+        description="Full answer text of candidate A (for research UI).",
+    )
+    candidate_b_answer: Optional[str] = Field(
+        default=None,
+        description="Full answer text of candidate B (for research UI).",
+    )
+    candidate_a_provider: Optional[str] = Field(
+        default=None,
+        description="LLM provider of candidate A (e.g. openai, gemini).",
+    )
+    candidate_b_provider: Optional[str] = Field(
+        default=None,
+        description="LLM provider of candidate B (e.g. openai, gemini).",
+    )
+
 
 # =========================
 # /feedback

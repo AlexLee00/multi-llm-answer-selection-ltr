@@ -167,3 +167,31 @@ textarea { resize: vertical; min-height: 90px; }
   font-weight: 600;
   padding: 0.5rem 0;
 }
+
+/* ─── Answer Body (구조화 렌더링) ────────────── */
+.answer-body {
+  background: #f0f4ff;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  line-height: 1.7;
+}
+.answer-paragraph {
+  margin-bottom: 0.6rem;
+}
+.answer-paragraph:last-child {
+  margin-bottom: 0;
+}
+.code-block {
+  background: #1e1e2e;
+  color: #cdd6f4;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+  white-space: pre;
+  font-family: "Fira Code", "Cascadia Code", Consolas, monospace;
+}

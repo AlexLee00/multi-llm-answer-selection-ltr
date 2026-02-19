@@ -113,15 +113,37 @@ export default function AskPanel({ config, onSuccess }: Props) {
         <div className="result-box">
           <div className="result-meta">
             <span>question_id: <code>{result.question_id}</code></span>
+            {" | "}
+            <span>추천: <strong>{result.served_choice_candidate_id === result.candidate_a_id ? "A" : "B"} 선택됨</strong></span>
           </div>
-          <div className="answer-box">
-            <h4>Selected Answer</h4>
-            <pre>{result.selected_answer_summary}</pre>
-          </div>
-          <div className="candidate-ids muted">
-            <div>candidate_a: <code>{result.candidate_a_id}</code></div>
-            <div>candidate_b: <code>{result.candidate_b_id}</code></div>
-            <div>served: <code>{result.served_choice_candidate_id}</code></div>
+
+          {/* A/B 두 답변 나란히 표시 */}
+          <div className="ab-compare">
+            {/* 후보 A */}
+            <div className={`candidate-card ${result.served_choice_candidate_id === result.candidate_a_id ? "candidate-card--winner" : ""}`}>
+              <div className="candidate-header">
+                <span className="candidate-label">A</span>
+                <span className="candidate-provider">{result.candidate_a_provider ?? "provider-a"}</span>
+                {result.served_choice_candidate_id === result.candidate_a_id && (
+                  <span className="winner-badge">⭐ 추천</span>
+                )}
+              </div>
+              <pre className="candidate-answer">{result.candidate_a_answer ?? "(답변 없음)"}</pre>
+              <div className="candidate-id muted">id: <code>{result.candidate_a_id.slice(0, 8)}…</code></div>
+            </div>
+
+            {/* 후보 B */}
+            <div className={`candidate-card ${result.served_choice_candidate_id === result.candidate_b_id ? "candidate-card--winner" : ""}`}>
+              <div className="candidate-header">
+                <span className="candidate-label">B</span>
+                <span className="candidate-provider">{result.candidate_b_provider ?? "provider-b"}</span>
+                {result.served_choice_candidate_id === result.candidate_b_id && (
+                  <span className="winner-badge">⭐ 추천</span>
+                )}
+              </div>
+              <pre className="candidate-answer">{result.candidate_b_answer ?? "(답변 없음)"}</pre>
+              <div className="candidate-id muted">id: <code>{result.candidate_b_id.slice(0, 8)}…</code></div>
+            </div>
           </div>
         </div>
       )}

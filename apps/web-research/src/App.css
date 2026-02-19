@@ -196,3 +196,75 @@ button[type="submit"]:disabled { background: #2d3748; cursor: not-allowed; }
   color: #fc8181;
 }
 code { font-family: monospace; font-size: 11px; color: #63b3ed; }
+
+/* ─── A/B 비교 레이아웃 ───────────────────────── */
+.ab-compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+.ab-compare--compact {
+  margin-bottom: 14px;
+}
+
+.candidate-card {
+  background: #0f1117;
+  border: 1px solid #2d3748;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.2s;
+}
+.candidate-card--winner {
+  border-color: #f6ad55;
+  box-shadow: 0 0 0 1px #f6ad55;
+}
+
+.candidate-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.candidate-label {
+  font-size: 12px;
+  font-weight: 700;
+  background: #2d3748;
+  padding: 1px 7px;
+  border-radius: 4px;
+  color: #90cdf4;
+}
+.candidate-provider {
+  font-size: 11px;
+  color: #a0aec0;
+}
+.winner-badge {
+  margin-left: auto;
+  font-size: 11px;
+  background: #7c4a05;
+  color: #f6ad55;
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-weight: 600;
+}
+
+.candidate-answer {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  line-height: 1.6;
+  flex: 1;
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: inherit;
+}
+.candidate-answer--compact {
+  max-height: 200px;
+}
+.candidate-id {
+  font-size: 10px;
+  margin-top: 4px;
+}

@@ -69,13 +69,36 @@ export default function FeedbackPanel({ askResp }: Props) {
   return (
     <section className="card">
       <h2>📝 Feedback</h2>
-      <p className="muted">
-        A: <code>{askResp.candidate_a_id.slice(0, 8)}…</code>{" "}
-        B: <code>{askResp.candidate_b_id.slice(0, 8)}…</code>
-      </p>
+
+      {/* 답변 미리보기: 피드백 전에 A/B 내용 확인 */}
+      {(askResp.candidate_a_answer || askResp.candidate_b_answer) && (
+        <div className="ab-compare ab-compare--compact">
+          <div className={`candidate-card ${askResp.served_choice_candidate_id === askResp.candidate_a_id ? "candidate-card--winner" : ""}`}>
+            <div className="candidate-header">
+              <span className="candidate-label">A</span>
+              <span className="candidate-provider">{askResp.candidate_a_provider ?? "provider-a"}</span>
+              {askResp.served_choice_candidate_id === askResp.candidate_a_id && (
+                <span className="winner-badge">⭐ 추천</span>
+              )}
+            </div>
+            <pre className="candidate-answer candidate-answer--compact">{askResp.candidate_a_answer ?? "(없음)"}</pre>
+          </div>
+          <div className={`candidate-card ${askResp.served_choice_candidate_id === askResp.candidate_b_id ? "candidate-card--winner" : ""}`}>
+            <div className="candidate-header">
+              <span className="candidate-label">B</span>
+              <span className="candidate-provider">{askResp.candidate_b_provider ?? "provider-b"}</span>
+              {askResp.served_choice_candidate_id === askResp.candidate_b_id && (
+                <span className="winner-badge">⭐ 추천</span>
+              )}
+            </div>
+            <pre className="candidate-answer candidate-answer--compact">{askResp.candidate_b_answer ?? "(없음)"}</pre>
+          </div>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         {/* Choice */}
-        <label>선호 선택 *</label>
+        <label>어느 답변이 더 좋았나요? *</label>
         <div className="choice-group">
           {CHOICES.map((c) => (
             <button
