@@ -90,6 +90,10 @@ def ask(request: AskRequest, db: Session = Depends(get_db)):
                 question_id=question.question_id,
                 provider=r["provider"],
                 model=r["model"],
+                latency_ms=int(r.get("latency_ms") or 0),
+                tokens_in=r.get("tokens_in"),
+                tokens_out=r.get("tokens_out"),
+                params_json=r.get("params_json") or {},
                 answer_hash=_sha256(ans),
                 answer_summary=ans,
                 feature_version="fv1",
@@ -156,16 +160,20 @@ def ask(request: AskRequest, db: Session = Depends(get_db)):
         db.commit()
 
         # Pairwise convenience ids: first two candidates (A,B)
-        candidate_a_id = db_candidates[0].candidate_id
-        candidate_b_id = db_candidates[1].candidate_id
+        cand_a = db_candidates[0]
+        cand_b = db_candidates[1]
 
         return AskResponse(
             question_id=question.question_id,
             selected_candidate_id=served_choice.candidate_id,
             selected_answer_summary=served_choice.answer_summary,
-            candidate_a_id=candidate_a_id,
-            candidate_b_id=candidate_b_id,
+            candidate_a_id=cand_a.candidate_id,
+            candidate_b_id=cand_b.candidate_id,
             served_choice_candidate_id=served_choice.candidate_id,
+            candidate_a_answer=cand_a.answer_summary,
+            candidate_b_answer=cand_b.answer_summary,
+            candidate_a_provider=cand_a.provider,
+            candidate_b_provider=cand_b.provider,
         )
 
     except Exception as e:

@@ -1,6 +1,7 @@
 # apps/api/src/app/services/generator.py
 from __future__ import annotations
 
+import os
 import uuid
 from typing import Any, Dict, List, Optional
 
@@ -59,11 +60,15 @@ def generate_candidates_v1(
 
     reg = build_default_registry()
 
-    # v0: 2 candidates fixed (openai + gemini alias)
+    openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
+    gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-lite").strip()
+    openai_timeout = float(os.getenv("OPENAI_TIMEOUT_S", "20"))
+    gemini_timeout = float(os.getenv("GEMINI_TIMEOUT_S", "20"))
+
     reqs = [
         _mk_req(
             provider="openai",
-            model="gpt-4o-mini",  # 기본값. env로 빼도 됨
+            model=openai_model,
             question=question,
             role=role,
             level=level,
@@ -72,11 +77,11 @@ def generate_candidates_v1(
             constraints=constraints,
             domain=domain,
             params_json={"temperature": 0.2, "max_tokens": 512},
-            timeout_s=20.0,
+            timeout_s=openai_timeout,
         ),
         _mk_req(
             provider="gemini",
-            model="gemini-1.5-flash",  # 지금은 dummy_gemini가 받기만 함
+            model=gemini_model,
             question=question,
             role=role,
             level=level,
@@ -85,7 +90,7 @@ def generate_candidates_v1(
             constraints=constraints,
             domain=domain,
             params_json={"temperature": 0.2, "max_tokens": 512},
-            timeout_s=20.0,
+            timeout_s=gemini_timeout,
         ),
     ]
 

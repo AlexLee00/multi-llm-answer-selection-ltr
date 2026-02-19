@@ -1,6 +1,7 @@
 # apps/api/src/app/services/llm/registry.py
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import Dict, Optional
 
@@ -8,12 +9,16 @@ from src.app.services.llm.base import LLMEngine
 from src.app.services.llm.engines.dummy_openai import DummyOpenAIEngine
 from src.app.services.llm.engines.dummy_gemini import DummyGeminiEngine
 
-# OpenAIEngine은 lazy import가 되더라도, registry import 시점에 import 에러 나면 안 되므로
-# 여기서도 try로 보호한다.
+# 실제 엔진은 import 실패해도 서버가 떠야 하므로 try로 보호한다.
 try:
-    from src.app.services.llm.engines.openai_engine import OpenAIEngine  # lazy import inside engine
+    from src.app.services.llm.engines.openai_engine import OpenAIEngine
 except Exception:
     OpenAIEngine = None  # type: ignore
+
+try:
+    from src.app.services.llm.engines.gemini_engine import GeminiEngine
+except Exception:
+    GeminiEngine = None  # type: ignore
 
 
 @dataclass
@@ -37,22 +42,18 @@ def build_default_registry() -> EngineRegistry:
 
     reg = EngineRegistry()
 
-    # Always available dummy engines
+    # --- OpenAI ---
+    # dummy를 먼저 등록한 뒤, 실제 엔진으로 덮어쓴다.
     reg.register(DummyOpenAIEngine())
-    reg.register(DummyGeminiEngine())
-
-    # Real OpenAI engine (if class import succeeded)
     if OpenAIEngine is not None:
-        reg.register(OpenAIEngine())
+        reg.register(OpenAIEngine())  # provider_name="openai" 로 덮어씀
 
-    # Aliases (very important)
-    # - "openai" should exist (either real OpenAIEngine or dummy_openai)
-    # - "gemini" should exist (dummy_gemini for now)
-    if "openai" not in reg.engines and "dummy_openai" in reg.engines:
-        reg.engines["openai"] = reg.engines["dummy_openai"]
-
-    if "gemini" not in reg.engines and "dummy_gemini" in reg.engines:
-        reg.engines["gemini"] = reg.engines["dummy_gemini"]
+    # --- Gemini ---
+    # USE_DUMMY_GEMINI=1 이면 dummy 유지, 아니면 실제 GeminiEngine으로 덮어쓴다.
+    reg.register(DummyGeminiEngine())
+    use_dummy = os.getenv("USE_DUMMY_GEMINI", "0").strip() == "1"
+    if not use_dummy and GeminiEngine is not None:
+        reg.register(GeminiEngine())  # provider_name="gemini" 로 덮어씀
 
     _DEFAULT_REGISTRY = reg
     return reg

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.app.routers.ask import router as ask_router
 from src.app.routers.feedback import router as feedback_router
+from src.app.routers.admin import router as admin_router
 from src.app.services.llm.registry import build_default_registry
 
 
@@ -47,6 +48,7 @@ def health():
 # Routers
 app.include_router(ask_router, prefix=API_PREFIX, tags=["ask"])
 app.include_router(feedback_router, prefix=API_PREFIX, tags=["feedback"])
+app.include_router(admin_router, prefix=API_PREFIX, tags=["admin"])
 
 @app.on_event("startup")
 def startup():
