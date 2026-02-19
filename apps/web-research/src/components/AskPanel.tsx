@@ -1,8 +1,41 @@
 // apps/web-research/src/components/AskPanel.tsx
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { Config } from "../App";
 import { postAsk } from "../api/client";
 import type { AskResponse, Role, Level, Goal } from "../api/client";
+
+/* ── 답변 전체 보기 모달 ── */
+interface ModalProps {
+  label: string;
+  provider: string;
+  answer: string;
+  isWinner: boolean;
+  onClose: () => void;
+}
+
+function AnswerModal({ label, provider, answer, isWinner, onClose }: ModalProps) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-sheet" onClick={(e) => e.stopPropagation()}>
+        <div className={`modal-header ${isWinner ? "modal-header--winner" : ""}`}>
+          <span className="modal-label">{label}</span>
+          <span className="modal-provider">{provider}</span>
+          {isWinner && <span className="winner-badge">⭐ 추천</span>}
+          <button className="modal-close-btn" onClick={onClose} title="닫기 (ESC)">✕</button>
+        </div>
+        <div className="modal-body">
+          <pre className="modal-answer">{answer || "(답변 없음)"}</pre>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface Props {
   config: Config;
@@ -26,11 +59,15 @@ export default function AskPanel({ config, onSuccess }: Props) {
   const [result, setResult] = useState<AskResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [modal, setModal] = useState<"a" | "b" | null>(null);
+  const closeModal = useCallback(() => setModal(null), []);
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
     setResult(null);
+    setModal(null);
     try {
       const resp = await postAsk({
         user: { role, level },
@@ -75,7 +112,6 @@ export default function AskPanel({ config, onSuccess }: Props) {
             </select>
           </div>
         </div>
-
         <label>Stack</label>
         <input value={stack} onChange={(e) => setStack(e.target.value)} placeholder="python, fastapi" />
 
@@ -94,7 +130,6 @@ export default function AskPanel({ config, onSuccess }: Props) {
           required
         />
 
-        {/* Config summary */}
         <div className="config-summary muted">
           policy: <strong>{config.served_policy}</strong>
           {" | "}model: <strong>{config.active_model_version || "latest"}</strong>
@@ -117,35 +152,66 @@ export default function AskPanel({ config, onSuccess }: Props) {
             <span>추천: <strong>{result.served_choice_candidate_id === result.candidate_a_id ? "A" : "B"} 선택됨</strong></span>
           </div>
 
-          {/* A/B 두 답변 나란히 표시 */}
+          <p className="click-hint">💡 카드를 클릭하면 전체 답변을 볼 수 있습니다</p>
           <div className="ab-compare">
-            {/* 후보 A */}
-            <div className={`candidate-card ${result.served_choice_candidate_id === result.candidate_a_id ? "candidate-card--winner" : ""}`}>
+            <div
+              className={`candidate-card candidate-card--clickable ${result.served_choice_candidate_id === result.candidate_a_id ? "candidate-card--winner" : ""}`}
+              onClick={() => setModal("a")}
+              title="클릭하여 전체 답변 보기"
+            >
               <div className="candidate-header">
                 <span className="candidate-label">A</span>
                 <span className="candidate-provider">{result.candidate_a_provider ?? "provider-a"}</span>
                 {result.served_choice_candidate_id === result.candidate_a_id && (
                   <span className="winner-badge">⭐ 추천</span>
                 )}
+                <span className="expand-hint">🔍 전체보기</span>
               </div>
-              <pre className="candidate-answer">{result.candidate_a_answer ?? "(답변 없음)"}</pre>
+              <pre className="candidate-answer candidate-answer--preview">
+                {result.candidate_a_answer ?? "(답변 없음)"}
+              </pre>
               <div className="candidate-id muted">id: <code>{result.candidate_a_id.slice(0, 8)}…</code></div>
             </div>
 
-            {/* 후보 B */}
-            <div className={`candidate-card ${result.served_choice_candidate_id === result.candidate_b_id ? "candidate-card--winner" : ""}`}>
+            <div
+              className={`candidate-card candidate-card--clickable ${result.served_choice_candidate_id === result.candidate_b_id ? "candidate-card--winner" : ""}`}
+              onClick={() => setModal("b")}
+              title="클릭하여 전체 답변 보기"
+            >
               <div className="candidate-header">
                 <span className="candidate-label">B</span>
                 <span className="candidate-provider">{result.candidate_b_provider ?? "provider-b"}</span>
                 {result.served_choice_candidate_id === result.candidate_b_id && (
                   <span className="winner-badge">⭐ 추천</span>
                 )}
+                <span className="expand-hint">🔍 전체보기</span>
               </div>
-              <pre className="candidate-answer">{result.candidate_b_answer ?? "(답변 없음)"}</pre>
+              <pre className="candidate-answer candidate-answer--preview">
+                {result.candidate_b_answer ?? "(답변 없음)"}
+              </pre>
               <div className="candidate-id muted">id: <code>{result.candidate_b_id.slice(0, 8)}…</code></div>
             </div>
           </div>
         </div>
+      )}
+
+      {modal === "a" && result && (
+        <AnswerModal
+          label="A"
+          provider={result.candidate_a_provider ?? "provider-a"}
+          answer={result.candidate_a_answer ?? ""}
+          isWinner={result.served_choice_candidate_id === result.candidate_a_id}
+          onClose={closeModal}
+        />
+      )}
+      {modal === "b" && result && (
+        <AnswerModal
+          label="B"
+          provider={result.candidate_b_provider ?? "provider-b"}
+          answer={result.candidate_b_answer ?? ""}
+          isWinner={result.served_choice_candidate_id === result.candidate_b_id}
+          onClose={closeModal}
+        />
       )}
     </section>
   );
