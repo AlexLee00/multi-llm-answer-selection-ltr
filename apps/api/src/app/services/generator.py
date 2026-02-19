@@ -62,11 +62,22 @@ def generate_candidates_v1(
 
     openai_model = os.getenv("OPENAI_MODEL", "gpt-4o-mini").strip()
     gemini_model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash-lite").strip()
+    openrouter_model = os.getenv(
+        "OPENROUTER_MODEL", "deepseek/deepseek-chat-v3-0324:free"
+    ).strip()
+
     openai_timeout = float(os.getenv("OPENAI_TIMEOUT_S", "20"))
     gemini_timeout = float(os.getenv("GEMINI_TIMEOUT_S", "20"))
+    openrouter_timeout = float(os.getenv("OPENROUTER_TIMEOUT_S", "30"))
 
-    reqs = [
-        _mk_req(
+    # ENABLED_ENGINES 환경변수로 어떤 엔진을 실제로 호출할지 결정
+    # 예: ENABLED_ENGINES=openrouter,gemini  (openai는 더미로 유지)
+    enabled_engines_raw = os.getenv("ENABLED_ENGINES", "openai,gemini").strip()
+    enabled_engines = [e.strip() for e in enabled_engines_raw.split(",") if e.strip()]
+
+    # 엔진별 요청 빌더 맵
+    engine_req_map = {
+        "openai": _mk_req(
             provider="openai",
             model=openai_model,
             question=question,
@@ -79,7 +90,7 @@ def generate_candidates_v1(
             params_json={"temperature": 0.2, "max_tokens": 512},
             timeout_s=openai_timeout,
         ),
-        _mk_req(
+        "gemini": _mk_req(
             provider="gemini",
             model=gemini_model,
             question=question,
@@ -92,7 +103,22 @@ def generate_candidates_v1(
             params_json={"temperature": 0.2, "max_tokens": 512},
             timeout_s=gemini_timeout,
         ),
-    ]
+        "openrouter": _mk_req(
+            provider="openrouter",
+            model=openrouter_model,
+            question=question,
+            role=role,
+            level=level,
+            goal=goal,
+            stack=stack,
+            constraints=constraints,
+            domain=domain,
+            params_json={"temperature": 0.2, "max_tokens": 512},
+            timeout_s=openrouter_timeout,
+        ),
+    }
+
+    reqs = [engine_req_map[e] for e in enabled_engines if e in engine_req_map]
 
     # prompt injection into params_json for engines
     for r in reqs:

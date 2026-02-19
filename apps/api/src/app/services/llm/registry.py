@@ -8,6 +8,7 @@ from typing import Dict, Optional
 from src.app.services.llm.base import LLMEngine
 from src.app.services.llm.engines.dummy_openai import DummyOpenAIEngine
 from src.app.services.llm.engines.dummy_gemini import DummyGeminiEngine
+from src.app.services.llm.engines.dummy_openrouter import DummyOpenRouterEngine
 
 # 실제 엔진은 import 실패해도 서버가 떠야 하므로 try로 보호한다.
 try:
@@ -19,6 +20,11 @@ try:
     from src.app.services.llm.engines.gemini_engine import GeminiEngine
 except Exception:
     GeminiEngine = None  # type: ignore
+
+try:
+    from src.app.services.llm.engines.openrouter_engine import OpenRouterEngine
+except Exception:
+    OpenRouterEngine = None  # type: ignore
 
 
 @dataclass
@@ -61,6 +67,13 @@ def build_default_registry() -> EngineRegistry:
     use_dummy_gemini = os.getenv("USE_DUMMY_GEMINI", "0").strip() == "1"
     if not use_dummy_gemini and GeminiEngine is not None:
         reg.register(GeminiEngine())  # provider_name="gemini" 로 덮어씀
+
+    # --- OpenRouter ---
+    # USE_DUMMY_OPENROUTER=1 이면 dummy 유지, 아니면 실제 OpenRouterEngine으로 덮어쓴다.
+    reg.register(DummyOpenRouterEngine())
+    use_dummy_openrouter = os.getenv("USE_DUMMY_OPENROUTER", "0").strip() == "1"
+    if not use_dummy_openrouter and OpenRouterEngine is not None:
+        reg.register(OpenRouterEngine())  # provider_name="openrouter" 로 덮어씀
 
     _DEFAULT_REGISTRY = reg
     return reg
